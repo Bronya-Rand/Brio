@@ -124,8 +124,11 @@ public static partial class ImBrio
 
         float entryWidth = (size.X - (ImGui.GetStyle().ItemSpacing.X * 2)) / 3;
         ImGui.SetNextItemWidth(entryWidth);
+      
+        using(ImRaii.PushStyle(ImGuiStyleVar.FrameBorderSize, 1f))
+        using(ImRaii.PushColor(ImGuiCol.Border, UIConstants.GizmoRed))
+            changed |= ImGui.DragFloat($"##{label}_X", ref value.X, step / 10);
 
-        changed |= ImGui.DragFloat($"##{label}_X", ref value.X, step / 10);
         if(ImGui.IsItemHovered())
         {
             ImGui.SetTooltip($" X {toolTip ?? ""}");
@@ -144,7 +147,10 @@ public static partial class ImBrio
         ImGui.SameLine();
         ImGui.SetNextItemWidth(entryWidth);
 
-        changed |= ImGui.DragFloat($"##{label}_Y", ref value.Y, step / 10);
+        using(ImRaii.PushStyle(ImGuiStyleVar.FrameBorderSize, 1f))
+        using(ImRaii.PushColor(ImGuiCol.Border, UIConstants.GizmoGreen))
+            changed |= ImGui.DragFloat($"##{label}_Y", ref value.Y, step / 10);
+        
         if(ImGui.IsItemHovered())
         {
             ImGui.SetTooltip($" Y {toolTip ?? ""}");
@@ -163,7 +169,10 @@ public static partial class ImBrio
         ImGui.SameLine();
         ImGui.SetNextItemWidth(entryWidth);
 
-        changed |= ImGui.DragFloat($"##{label}_Z", ref value.Z, step / 10);
+        using(ImRaii.PushStyle(ImGuiStyleVar.FrameBorderSize, 1f))
+        using(ImRaii.PushColor(ImGuiCol.Border, UIConstants.GizmoBlue)) 
+            changed |= ImGui.DragFloat($"##{label}_Z", ref value.Z, step / 10);
+      
         if(ImGui.IsItemHovered())
         {
             ImGui.SetTooltip($" Z {toolTip ?? ""}");
