@@ -42,6 +42,19 @@ public class VirtualCameraManager : IDisposable
         _moveSpeed = configurationService.Configuration.Interface.DefaultFreeCameraMovementSpeed;
     }
 
+    // This implementation is a bit odd for me, it's not how I thought .IsLocked should be used, but maybe it works well
+    // I also don't know if I want it per-camera or just a global lock for all cameras,
+    // but this works for now and we can change it later when I rework the camera system
+    public bool CamerasLocked
+    {
+        get
+        {
+            if(_entityManager.TryGetEntity("cameras", out var camContainer))
+                return camContainer.IsLocked;
+            return false;
+        }
+    }
+
     private readonly Vector3 Up = new(0f, 1f, 0f);
 
     private int _nextCameraId = 1;
@@ -293,7 +306,7 @@ public class VirtualCameraManager : IDisposable
 
     public unsafe void Update(MouseFrame* mouseFrame)
     {
-        if(mouseFrame is null || CurrentCamera is null)
+        if(mouseFrame is null || CurrentCamera is null || CamerasLocked)
         {
             return;
         }
@@ -432,6 +445,12 @@ public class VirtualCameraManager : IDisposable
         }
         else
         {
+            // Ensure camera locking resets to unlocked when entering GPose
+            if(_entityManager.TryGetEntity("cameras", out var camContainer))
+            {
+                camContainer.IsLocked = false;
+            }
+
             var defaultCam = _entityManager.GetEntity<CameraEntity>(new Entities.Core.CameraId(0));
             if(defaultCam is not null)
             {

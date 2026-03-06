@@ -96,15 +96,7 @@ public class GameInputService : IDisposable
 
             if(_configurationService.Configuration.InputManager.EnableConsumeAllInput)
             {
-                for(int i = 0; i < KeyboardFrame.KeyStateLength; i++)
-                {
-                    if(i == 27) // VirtualKey.ESCAPE
-                        continue;
-                    if(i == 13) // VirtualKey.RETURN
-                        continue;
-
-                    keyboardFrame->KeyState[i] = 0;
-                }
+                ConsumeAllInput(keyboardFrame);
             }
 
             if(_configurationService.Configuration.InputManager.Enable)
@@ -146,12 +138,41 @@ public class GameInputService : IDisposable
                         keyboardFrame->KeyState[18] = 0; // Alt
                     }
                 }
+
+                // If cameras are locked, consume mouse movement and movement keys so
+                // no camera movement can occur.
+                if(_virtualCameraService.CamerasLocked)
+                {
+                    if(mouseFrame is not null)
+                    {
+                        // Prevent mouse movement from affecting the camera, but keep
+                        // button presses so game UI interactions still work.
+                        mouseFrame->DeltaX = 0;
+                        mouseFrame->DeltaY = 0;
+                        mouseFrame->ScrollValue = 0;
+                    }
+
+                    ConsumeAllInput(keyboardFrame);
+                }
             }
 
             if(AllowEscape is false)
             {
                 keyboardFrame->KeyState[27] = 0; // ESCAPE
             }
+        }
+    }
+
+    public unsafe void ConsumeAllInput(KeyboardFrame* keyboardFrame)
+    {
+        for(int i = 0; i < KeyboardFrame.KeyStateLength; i++)
+        {
+            if(i == 27) // VirtualKey.ESCAPE
+                continue;
+            if(i == 13) // VirtualKey.RETURN
+                continue;
+
+            keyboardFrame->KeyState[i] = 0;
         }
     }
 
