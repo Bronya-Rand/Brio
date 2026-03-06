@@ -44,7 +44,7 @@ public class InputManagerService : IDisposable
         }
     }
 
-    private bool IsKeyDown(VirtualKey key)
+    public bool IsKeyDown(VirtualKey key)
     {
         return _keyState[key];
     }

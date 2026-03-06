@@ -18,6 +18,7 @@ using Dalamud.Bindings.ImGuizmo;
 using Dalamud.Interface.Utility;
 using Dalamud.Interface.Utility.Raii;
 using Dalamud.Interface.Windowing;
+using Dalamud.Game.ClientState.Keys;
 using Dalamud.Plugin.Services;
 using OneOf.Types;
 using System;
@@ -85,16 +86,16 @@ public class PosingOverlayWindow : Window, IDisposable
 
         ImGuizmo.SetID(_gizmoId);
 
-        //if(_trackingTransform.HasValue)
-        //{
-        //    Flags &= ~ImGuiWindowFlags.NoInputs;
-        //}
+        if(_trackingTransform.HasValue)
+        {
+            Flags &= ~ImGuiWindowFlags.NoInputs;
+        }
     }
 
     public override void Draw()
     {
         var overlayConfig = _configurationService.Configuration.Posing;
-        var uiState = new OverlayUIState(overlayConfig);
+        var uiState = new OverlayUIState(overlayConfig, _trackingTransform.HasValue || _lightTrackingTransform.HasValue);
 
         for(int i = 0; i < _lightingService.SpawnedLightEntities.Count; i++)
         {
@@ -118,15 +119,18 @@ public class PosingOverlayWindow : Window, IDisposable
 
         DrawActorContent(posing, uiState, overlayConfig);
 
-        //var pos = ImGui.GetMousePos();
-        //if(_gameGui.ScreenToWorld(pos, out var res))
-        //{
-        //    var col = Get(EColor.RedBright, EColor.YellowBright);
-        //    DrawRingWorld(res, 0.5f, col.ToUint(), 1f);
-        //    var l = MathF.Sqrt(1f) / 2f * 0.5f;
-        //    DrawLineWorld(res + new Vector3(-l, 0, -l), res + new Vector3(l, 0, l), col.ToUint(), 2f);
-        //    DrawLineWorld(res + new Vector3(l, 0, -l), res + new Vector3(-l, 0, l), col.ToUint(), 2f);
-        //}
+        if(InputManagerService.Instance.IsKeyDown(VirtualKey.TAB))
+        {
+            var pos = ImGui.GetMousePos();
+            if(_gameGui.ScreenToWorld(pos, out var res))
+            {
+                var col = Get(EColor.RedBright, EColor.YellowBright);
+                DrawRingWorld(res, 0.5f, col.ToUint(), 1f);
+                var l = MathF.Sqrt(1f) / 2f * 0.5f;
+                DrawLineWorld(res + new Vector3(-l, 0, -l), res + new Vector3(l, 0, l), col.ToUint(), 2f);
+                DrawLineWorld(res + new Vector3(l, 0, -l), res + new Vector3(-l, 0, l), col.ToUint(), 2f);
+            }
+        }
     }
 
     public override void PostDraw()
@@ -747,7 +751,7 @@ public class PosingOverlayWindow : Window, IDisposable
             _lightTrackingTransform = newTransform;
         }
 
-        if(_lightTrackingTransform.HasValue && !ImGuizmo.IsUsing())
+        if(_lightTrackingTransform.HasValue && (!ImGuizmo.IsUsing() || !ImGui.IsMouseDown(ImGuiMouseButton.Left)))
         {
             _lightTrackingTransform = null;
 
@@ -943,7 +947,7 @@ public class PosingOverlayWindow : Window, IDisposable
             }
         }
 
-        if(_trackingTransform.HasValue && !ImGuizmo.IsUsing())
+        if(_trackingTransform.HasValue && (!ImGuizmo.IsUsing() || !ImGui.IsMouseDown(ImGuiMouseButton.Left)))
         {
             if(_groupedPendingSnapshot != null && _groupedPendingSnapshot.Count > 0)
             {
@@ -1090,7 +1094,12 @@ public class PosingOverlayWindow : Window, IDisposable
         if(newState)
             IsOpen = _configurationService.Configuration.Posing.OverlayDefaultsOn;
         else
+        {
             IsOpen = false;
+            _trackingTransform = null;
+            _lightTrackingTransform = null;
+            _groupedPendingSnapshot = null;
+        }
     }
 
     public void Dispose()
@@ -1155,10 +1164,10 @@ public class PosingOverlayWindow : Window, IDisposable
         }
     }
 
-    private class OverlayUIState(PosingConfiguration configuration)
+    private class OverlayUIState(PosingConfiguration configuration, bool isTrackingGizmo = false)
     {
         public bool PopupOpen = ImGui.IsPopupOpen(_boneSelectPopupName);
-        public bool UsingGizmo = ImGuizmo.IsUsing();
+        public bool UsingGizmo = ImGuizmo.IsUsing() && isTrackingGizmo;
         public bool HoveringGizmo = ImGuizmo.IsOver();
         public bool AnyActive = ImGui.IsAnyItemActive();
         public bool AnyWindowHovered = ImGui.IsWindowHovered(ImGuiHoveredFlags.AnyWindow);
