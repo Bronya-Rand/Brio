@@ -360,10 +360,10 @@ public class PosingTransformEditor
 
             if(didChange)
             {
-                if(_groupedPendingSnapshot == null && Brio.TryGetService(out HistoryService? historyService))
+                if(_groupedPendingSnapshot == null && Brio.TryGetService<HistoryService>(out HistoryService? historyService))
                 {
                     var list = new List<(EntityId, PoseInfo, Transform)>();
-                    if(Brio.TryGetService(out EntityManager? entityManager))
+                    if(Brio.TryGetService<EntityManager>(out EntityManager? entityManager))
                     {
                         foreach(var id in entityManager.SelectedEntityIds)
                         {
@@ -427,7 +427,7 @@ public class PosingTransformEditor
                 {
                     if(_groupedPendingSnapshot != null && _groupedPendingSnapshot.Count > 0)
                     {
-                        if(Brio.TryGetService(out HistoryService? historyService))
+                        if(Brio.TryGetService<HistoryService>(out HistoryService? historyService))
                         {
                             historyService.Snapshot(_groupedPendingSnapshot);
                         }

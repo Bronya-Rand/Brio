@@ -41,7 +41,11 @@ public unsafe class SkeletonService : IDisposable
     private readonly IFramework _framework;
 
     private readonly List<Skeleton> _skeletons = [];
+    private readonly Dictionary<nint, Skeleton> _skeletonsByGameSkeleton = [];
+    private readonly Dictionary<nint, Skeleton> _skeletonsByCharaBase = [];
+    private readonly Dictionary<Skeleton, nint> _skeletonCharaBaseKey = [];
     private readonly Dictionary<Skeleton, SkeletonPosingCapability> _skeletonToPosingCapability = [];
+
     private readonly List<Skeleton> _skeletonsToUpdate = [];
 
     private readonly Dictionary<ulong, Dictionary<string, Transform>> _directBoneOverrides = [];
@@ -49,6 +53,17 @@ public unsafe class SkeletonService : IDisposable
     private readonly Dictionary<ulong, Dictionary<int, Dictionary<string, int>>> _boneIndexCache = [];
 
     private readonly Lock _directOverridesLock = new();
+
+    private DiagnosticTracker _perfTracker = new("SkeletonService", logInterval: 10000, slowFrameThresholdMs: 5.0, slowFrameCooldownFrames: 8000,
+            new Dictionary<string, DiagnosticTrace>
+            {
+                { "DirectOverrides", new DiagnosticTrace() },
+                { "BrioTransforms", new DiagnosticTrace() },
+                { "ReparentPartials", new DiagnosticTrace() },
+                { "CachedTransforms", new DiagnosticTrace() },
+                { "Attachments", new DiagnosticTrace() }
+            }
+        );
 
     public float BoneInterpolationSpeed { get; set; } = 0.2f;
     public bool RealTimeAnimationEnabled { get; set; } = true;
@@ -119,53 +134,62 @@ public unsafe class SkeletonService : IDisposable
 
     public Skeleton? GetSkeleton(BrioCharacterBase* charaBase)
     {
-        return _skeletons.FirstOrDefault(x => x!.CharacterBase == charaBase, null);
+        _skeletonsByCharaBase.TryGetValue((nint)charaBase, out var result);
+        return result;
     }
 
     public Skeleton? GetSkeleton(GameSkeleton* skeleton)
     {
-        return _skeletons.FirstOrDefault(x => x!.GameSkeleton == skeleton, null);
+        _skeletonsByGameSkeleton.TryGetValue((nint)skeleton, out var result);
+        return result;
     }
 
     private void ApplyBrioTransforms(Skeleton skeleton, SkeletonPosingCapability posingCapability)
     {
-        for(int partialIdx = 0; partialIdx < skeleton.Partials.Count; ++partialIdx)
+        var hasWork = posingCapability.HasTransitiveActions || posingCapability.PoseInfo.HasAnyStacks;
+
+        if(!hasWork)
         {
-            var partial = skeleton.Partials[partialIdx];
-            var pose = partial.GetBestPose();
-            if(pose != null)
+            // No stacks and no transitive actions, fail fast, and update cached transforms
+            skeleton.UpdateCachedTransforms();
+            return;
+        }
+
+        var partials = skeleton.Partials;
+        for(int partialIdx = 0; partialIdx < partials.Count; ++partialIdx)
+        {
+            var partial = partials[partialIdx];
+            var boneArray = partial.BoneArray;
+            if(boneArray.Length == 0)
+                continue;
+
+            hkaPose* pose = partial.GetBestPose();
+            if(pose == null)
+                continue;
+
+            for(int boneIdx = 0; boneIdx < boneArray.Length; ++boneIdx)
             {
-                var boneLength = pose->Skeleton->Bones.Length;
-                for(int boneIdx = 0; boneIdx < boneLength; ++boneIdx)
-                {
-                    var bone = partial.GetBone(boneIdx);
+                var bone = boneArray[boneIdx];
+                if(bone == null)
+                    continue;
 
-                    if(bone == null)
-                        continue;
+                var bonePoseInfo = posingCapability.GetBonePose(bone);
 
-                    var bonePoseInfo = posingCapability.GetBonePose(bone);
+                // Apply existing stacks
+                var snapshotCount = bonePoseInfo.Stacks.Count;
+                for(int si = 0; si < snapshotCount; si++)
+                    ApplySnapshot(pose, bone, bonePoseInfo.Stacks[si]);
 
-                    // Apply existing stacks
-                    var snapshotCount = bonePoseInfo.Stacks.Count;
-                    foreach(var info in bonePoseInfo.Stacks)
-                    {
-                        ApplySnapshot(pose, bone, info);
-                    }
+                var modelSpace = pose->AccessBoneModelSpace(boneIdx, PropagateOrNot.DontPropagate);
+                bone.LastTransform = modelSpace;
+                bone.LastRawTransform = modelSpace;
 
-                    var modelSpace = pose->AccessBoneModelSpace(boneIdx, PropagateOrNot.DontPropagate);
-                    bone.LastTransform = modelSpace;
-                    bone.LastRawTransform = modelSpace;
+                // Transitive actions
+                posingCapability.ExecuteTransitiveActions(bone, bonePoseInfo);
 
-                    // Transitive actions
-                    posingCapability.ExecuteTransitiveActions(bone, bonePoseInfo);
-
-                    // Apply new stacks
-                    for(int i = snapshotCount; i < bonePoseInfo.Stacks.Count; i++)
-                    {
-                        var info = bonePoseInfo.Stacks[i];
-                        ApplySnapshot(pose, bone, info);
-                    }
-                }
+                // Apply new stacks
+                for(int i = snapshotCount; i < bonePoseInfo.Stacks.Count; i++)
+                    ApplySnapshot(pose, bone, bonePoseInfo.Stacks[i]);
             }
         }
     }
@@ -373,8 +397,10 @@ public unsafe class SkeletonService : IDisposable
 
         BeginPosingInterval();
 
-        foreach(var skeleton in _skeletons)
+        for(int i = 0; i < _skeletons.Count; i++)
         {
+            var skeleton = _skeletons[i];
+
             if(skeleton.IsValid is false)
                 continue;
 
@@ -384,38 +410,52 @@ public unsafe class SkeletonService : IDisposable
             _skeletonsToUpdate.Add(skeleton);
         }
 
-        foreach(var skeleton in _skeletonsToUpdate)
+        using(Diagnostics.MeasureTime(ref _perfTracker.Trace, _skeletonsToUpdate.Count))
         {
-            skeleton.ClearAttachments();
-        }
-
-        foreach(var skeleton in _skeletonsToUpdate)
-        {
-            ApplyDirectBoneOverrides(skeleton);
-
-            if(_skeletonToPosingCapability.TryGetValue(skeleton, out var capability))
+            for(int i = 0; i < _skeletonsToUpdate.Count; i++)
             {
-                ApplyBrioTransforms(skeleton, capability);
+                var skeleton = _skeletonsToUpdate[i];
+
+                // If the skeleton doesn't have a posing capability, Brio doesn't "Own" this actor, so we can skip all the work and just let the game do its thing.
+                // TODO maybe we move this check to the other loop? Not sure how much faster there then just doing it here.
+                if(!_skeletonToPosingCapability.TryGetValue(skeleton, out SkeletonPosingCapability? capability))
+                    continue;
+
+                skeleton.ClearAttachments();
+
+                //using(Diagnostics.MeasureTime(ref _perfTracker.GetTrace("DirectOverrides")))
+                    ApplyDirectBoneOverrides(skeleton);
+
+                //using(Diagnostics.MeasureTime(ref _perfTracker.GetTrace("BrioTransforms")))
+                    ApplyBrioTransforms(skeleton, capability);
+
+                //using(Diagnostics.MeasureTime(ref _perfTracker.GetTrace("ReparentPartials")))
+                    ReparentPartials(skeleton);
+
+                //using(Diagnostics.MeasureTime(ref _perfTracker.GetTrace("CachedTransforms")))
+                    skeleton.UpdateCachedTransforms();
+
+                //using(Diagnostics.MeasureTime(ref _perfTracker.GetTrace("Attachments")))
+                    ReparentAttachments(skeleton);
             }
-
-            skeleton.UpdateCachedTransforms();
-            ReparentPartials(skeleton);
-            skeleton.UpdateCachedTransforms();
         }
 
-        foreach(var skeleton in _skeletonsToUpdate)
-        {
-            ReparentAttachments(skeleton);
-        }
+        if(_perfTracker.OnSlowFrame(_perfTracker.Trace.LastMs))
+            Brio.Log.Debug($"[Diagnostics]:[SkeletonService] Slow BeginSkeletonUpdate: {_perfTracker.Trace.LastMs:F3}ms with {_skeletonsToUpdate.Count} skeleton(s)");
+
+        _perfTracker.Tick();
     }
+
 
     private void FinalizeSkeletonUpdate()
     {
         if(!_gPoseService.IsGPosing)
             return;
 
-        foreach(var skeleton in _skeletonsToUpdate)
+        for(int i = 0; i < _skeletonsToUpdate.Count; i++)
         {
+            var skeleton = _skeletonsToUpdate[i];
+
             // We take one final view now the engine is done touching skeletons.
             // Notably, the tail size and breast size are updated during the render rather than the physics update (or before).
             // It's too late to manipulate what ends up in the game scene at this point.
@@ -472,6 +512,9 @@ public unsafe class SkeletonService : IDisposable
         Brio.Log.Debug("Refreshing skeleton cache...");
         _skeletonToPosingCapability.Clear();
         _skeletons.Clear();
+        _skeletonsByGameSkeleton.Clear();
+        _skeletonsByCharaBase.Clear();
+        _skeletonCharaBaseKey.Clear();
 
         foreach(var actor in _monitorService.ObjectTable)
         {
@@ -492,21 +535,23 @@ public unsafe class SkeletonService : IDisposable
     {
         _skeletons.Remove(skeleton);
         _skeletonToPosingCapability.Remove(skeleton);
+        _skeletonsByGameSkeleton.Remove((nint)skeleton.GameSkeleton);
+
+        if(_skeletonCharaBaseKey.Remove(skeleton, out var charaBaseKey))
+            _skeletonsByCharaBase.Remove(charaBaseKey);
 
         skeleton.Dispose();
     }
 
     private void ClearSkeleton(BrioCharacterBase* charaBase)
     {
-        var temp = _skeletons.FirstOrDefault(x => x!.CharacterBase == charaBase, null);
-        if(temp != null)
+        if(_skeletonsByCharaBase.TryGetValue((nint)charaBase, out var temp))
             ClearSkeleton(temp);
     }
 
     private void ClearSkeleton(GameSkeleton* skeleton)
     {
-        var temp = _skeletons.FirstOrDefault(x => x!.GameSkeleton == skeleton, null);
-        if(temp != null)
+        if(_skeletonsByGameSkeleton.TryGetValue((nint)skeleton, out var temp))
             ClearSkeleton(temp);
     }
 
@@ -517,6 +562,11 @@ public unsafe class SkeletonService : IDisposable
         if(skele != null)
         {
             _skeletons.Add(skele);
+
+            var charaBaseKey = (nint)skele.CharacterBase;
+            _skeletonsByGameSkeleton[(nint)skeleton] = skele;
+            _skeletonsByCharaBase[charaBaseKey] = skele;
+            _skeletonCharaBaseKey[skele] = charaBaseKey;
         }
     }
 
@@ -593,6 +643,8 @@ public unsafe class SkeletonService : IDisposable
 
     public void Dispose()
     {
+        GC.SuppressFinalize(this);
+
         _updateBonePhysicsHook.Dispose();
         _finalizeSkeletonsHook.Dispose();
         _monitorService.CharacterBaseMaterialsUpdated -= OnCharacterBaseMaterialsUpdate;

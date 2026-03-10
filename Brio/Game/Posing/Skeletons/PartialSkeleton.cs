@@ -1,6 +1,5 @@
 ﻿using FFXIVClientStructs.Havok.Animation.Rig;
 using System.Collections.Generic;
-using System.Linq;
 
 namespace Brio.Game.Posing.Skeletons;
 
@@ -18,7 +17,9 @@ public unsafe class PartialSkeleton(Skeleton skeleton, int id)
 
     public List<Bone> RootBones { get; set; } = [];
 
-    public IReadOnlyDictionary<int, Bone> Bones => _bones;
+    public Dictionary<int, Bone> Bones => _bones;
+
+    public Bone?[] BoneArray { get; private set; } = [];
 
     public Bone GetOrCreateBone(int index)
     {
@@ -49,11 +50,32 @@ public unsafe class PartialSkeleton(Skeleton skeleton, int id)
 
     public hkaPose* GetBestPose()
     {
-        var best = Poses.FirstOrDefault(0);
-        if(best == 0)
-            return null;
+        return Poses.Count > 0 ? (hkaPose*)Poses[0] : null;
+    }
 
-        return (hkaPose*)best;
+    internal void SealToBoneArray()
+    {
+        if(Poses.Count == 0)
+            return;
+
+        var pose = (hkaPose*)Poses[0];
+        if(pose == null || pose->Skeleton == null)
+            return;
+
+        var count = pose->Skeleton->Bones.Length;
+        if(count == 0)
+            return;
+
+        var arr = new Bone?[count];
+        foreach(var (idx, bone) in _bones)
+        {
+            if((uint)idx < (uint)count)
+            {
+                arr[idx] = bone;
+            }
+        }
+
+        BoneArray = arr;
     }
 }
 

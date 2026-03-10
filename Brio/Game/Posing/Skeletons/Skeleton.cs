@@ -125,6 +125,12 @@ public class Skeleton : IDisposable
             }
         }
 
+        // chashe bone arrays for faster access later
+        foreach(var partial in Partials)
+        {
+            partial.SealToBoneArray();
+        }
+
         IsValid = true;
     }
 
@@ -149,23 +155,27 @@ public class Skeleton : IDisposable
 
     public unsafe void UpdateCachedTransforms(CacheTypes cacheTypes = CacheTypes.All)
     {
-        foreach(var partial in Partials)
+        if(cacheTypes == CacheTypes.None)
+            return;
+
+        for(int i = 0; i < Partials.Count; i++)
         {
-            if(partial.Poses.Count == 0)
+            var partial = Partials[i];
+
+            var boneArray = partial.BoneArray;
+            if(boneArray.Length == 0)
                 continue;
 
             hkaPose* pose = (hkaPose*)partial.Poses[0];
-
             if(pose == null || pose->Skeleton == null || pose->Skeleton->Bones.Data == null)
                 continue;
 
-            var boneCount = pose->Skeleton->Bones.Length;
-            foreach(var (id, bone) in partial.Bones)
+            for(int boneIdx = 0; boneIdx < boneArray.Length; boneIdx++)
             {
-                if(boneCount <= bone.Index)
-                    continue;
+                var bone = boneArray[boneIdx];
+                if(bone == null) continue;
 
-                Transform pos = pose->AccessBoneModelSpace(id, PropagateOrNot.DontPropagate);
+                Transform pos = pose->AccessBoneModelSpace(boneIdx, PropagateOrNot.DontPropagate);
 
                 if(cacheTypes.HasFlag(CacheTypes.LastRawTransform))
                     bone.LastRawTransform = pos;
@@ -173,7 +183,6 @@ public class Skeleton : IDisposable
                 if(cacheTypes.HasFlag(CacheTypes.LastTransform))
                     bone.LastTransform = pos;
             }
-
         }
     }
 

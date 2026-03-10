@@ -25,6 +25,7 @@ public class PoseInfo
         return _poses.Any(p => (predicate == null || predicate(p.Key)) && p.Value.HasStacks);
     }
 
+    public bool HasAnyStacks => _poses.Any(p => p.Value.HasStacks);
     public bool HasIKStacks => _poses.Any(x => x.Value.Stacks.Any(s => s.IKInfo.Enabled));
 
     public Dictionary<string, int> StackCounts
@@ -41,7 +42,7 @@ public class PoseInfo
         }
     }
 
-    public unsafe BonePoseInfo GetPoseInfo(Bone bone, PoseInfoSlot slot = PoseInfoSlot.Character) => GetPoseInfo(new BonePoseInfoId(bone.Name, bone.PartialId, slot));
+    public BonePoseInfo GetPoseInfo(Bone bone, PoseInfoSlot slot = PoseInfoSlot.Character) => GetPoseInfo(new BonePoseInfoId(bone.Name, bone.PartialId, slot));
 
     public void Clear(Predicate<BonePoseInfoId>? predicate = null)
     {
@@ -66,15 +67,7 @@ public class PoseInfo
         return clone;
     }
 
-    public PoseInfo Clone()
-    {
-        var clone = new PoseInfo();
-        foreach(var pose in _poses)
-        {
-            clone._poses.Add(pose.Key, pose.Value.Clone(clone));
-        }
-        return clone;
-    }
+    public PoseInfo Clone() => Clone(null);
 }
 
 public class BonePoseInfo(BonePoseInfoId id, PoseInfo parent)
@@ -90,7 +83,7 @@ public class BonePoseInfo(BonePoseInfoId id, PoseInfo parent)
 
     public BoneIKInfo DefaultIK { get; set; } = BoneIKInfo.CalculateDefault(id.BoneName);
 
-    public IReadOnlyList<BonePoseTransformInfo> Stacks => _stacks;
+    public List<BonePoseTransformInfo> Stacks => _stacks;
 
     public PoseMirrorMode MirrorMode { get; set; } = PoseMirrorMode.None;
 
@@ -169,7 +162,7 @@ public class BonePoseInfo(BonePoseInfoId id, PoseInfo parent)
             MirrorMode = MirrorMode
         };
 
-        clone._stacks.AddRange([.. _stacks]);
+        clone._stacks.AddRange(_stacks);
 
         return clone;
     }

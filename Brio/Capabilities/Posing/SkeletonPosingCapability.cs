@@ -30,6 +30,8 @@ public class SkeletonPosingCapability : ActorCharacterCapability
 
     public IReadOnlyList<(Skeleton Skeleton, PoseInfoSlot Slot)> Skeletons => [.. new[] { (CharacterSkeleton, PoseInfoSlot.Character), (MainHandSkeleton, PoseInfoSlot.MainHand), (OffHandSkeleton, PoseInfoSlot.OffHand), (PropSkeleton, PoseInfoSlot.Prop), (OrnamentSkeleton, PoseInfoSlot.Ornament) }.Where(s => s.Item1 != null).Cast<(Skeleton Skeleton, PoseInfoSlot Slot)>()];
 
+    public bool HasTransitiveActions => _transitiveActions.Count > 0;
+
     public PoseInfo PoseInfo { get; set; } = new PoseInfo();
 
     private readonly List<Action<Bone, BonePoseInfo>> _transitiveActions = [];
@@ -213,21 +215,25 @@ public class SkeletonPosingCapability : ActorCharacterCapability
 
     private unsafe void UpdateCache()
     {
-        CharacterSkeleton = _skeletonService.GetSkeleton(Character.GetCharacterBase());
         MainHandSkeleton = _skeletonService.GetSkeleton(Character.GetWeaponCharacterBase(ActorEquipSlot.MainHand));
         OffHandSkeleton = _skeletonService.GetSkeleton(Character.GetWeaponCharacterBase(ActorEquipSlot.OffHand));
         PropSkeleton = _skeletonService.GetSkeleton(Character.GetWeaponCharacterBase(ActorEquipSlot.Prop));
         OrnamentSkeleton = _skeletonService.GetSkeleton(Character.GetOrnamentBase());
+
+        var newCharacterSkeleton = _skeletonService.GetSkeleton(Character.GetCharacterBase());
+        if(newCharacterSkeleton != CharacterSkeleton)
+        {
+            CharacterSkeleton = newCharacterSkeleton;
+            CharacterHasTail = CharacterSkeleton?.GetFirstVisibleBone("n_sippo_a") != null;
+            CharacterIsIVCS = CharacterSkeleton?.GetFirstVisibleBone("iv_ko_c_l") != null;
+            CharacterIsDawntrail = CharacterSkeleton?.GetFirstVisibleBone("j_f_bero_01") != null;
+        }
 
         _skeletonService.RegisterForFrameUpdate(CharacterSkeleton, this);
         _skeletonService.RegisterForFrameUpdate(MainHandSkeleton, this);
         _skeletonService.RegisterForFrameUpdate(OffHandSkeleton, this);
         _skeletonService.RegisterForFrameUpdate(PropSkeleton, this);
         _skeletonService.RegisterForFrameUpdate(OrnamentSkeleton, this);
-
-        CharacterHasTail = CharacterSkeleton?.GetFirstVisibleBone("n_sippo_a") != null;
-        CharacterIsIVCS = CharacterSkeleton?.GetFirstVisibleBone("iv_ko_c_l") != null;
-        CharacterIsDawntrail = CharacterSkeleton?.GetFirstVisibleBone("j_f_bero_01") != null;
     }
 
     public bool FilterFaceBones(BonePoseInfoId obj)
