@@ -1,4 +1,5 @@
-﻿using Brio.Core;
+﻿using Brio.Config;
+using Brio.Core;
 using Brio.Input;
 using Brio.UI.Controls.Core;
 using Dalamud.Bindings.ImGui;
@@ -8,7 +9,6 @@ using Dalamud.Interface.Utility.Raii;
 using System.Collections.Generic;
 using System.Numerics;
 using System.Runtime.CompilerServices;
-using Brio.Config;
 
 namespace Brio.UI.Controls.Stateless;
 
@@ -66,7 +66,7 @@ public static partial class ImBrio
 
         if(isExpanded && enableExpanded)
         {
-            ImGui.PushStyleColor(ImGuiCol.FrameBg, UIConstants.GizmoBlue);
+            ImGui.PushStyleColor(ImGuiCol.FrameBg, UIConstants.GizmoRed);
 
             float x = vectorValue.X;
             (var pdidChange, var panyActive) = DragFloat($"###{label}_x", ref x, step, $"{tooltip} X");
@@ -80,7 +80,7 @@ public static partial class ImBrio
             vectorValue.Y = y;
 
             ImGui.PopStyleColor();
-            ImGui.PushStyleColor(ImGuiCol.FrameBg, UIConstants.GizmoRed);
+            ImGui.PushStyleColor(ImGuiCol.FrameBg, UIConstants.GizmoBlue);
 
             float z = vectorValue.Z;
             (var sdidChange, var sanyActive) = DragFloat($"###{label}_z", ref z, step, $"{tooltip} Z");
@@ -122,16 +122,24 @@ public static partial class ImBrio
         if(size.X <= 0)
             size.X = GetRemainingWidth();
 
-        float entryWidth = (size.X - (ImGui.GetStyle().ItemSpacing.X * 2)) / 3;
+        float pillWidth = 3;
+        float pillHeight = 24;
+     
+        float entryWidth = ((size.X - (ImGui.GetStyle().ItemSpacing.X * 2)) / 3) - ((pillWidth * ImGuiHelpers.GlobalScale) * 3);
+     
+        ImDrawListPtr dl = ImGui.GetWindowDrawList();
+
+        PillDummyBox(ref dl, pillWidth, pillHeight, UIConstants.GizmoRed);
+
+        ImGui.SameLine();
         ImGui.SetNextItemWidth(entryWidth);
-      
+
         using(ImRaii.PushStyle(ImGuiStyleVar.FrameBorderSize, 1f))
-        using(ImRaii.PushColor(ImGuiCol.Border, UIConstants.GizmoRed))
             changed |= ImGui.DragFloat($"##{label}_X", ref value.X, step / 10);
 
         if(ImGui.IsItemHovered())
         {
-            ImGui.SetTooltip($" X {toolTip ?? ""}");
+            AttachToolTip($" X {toolTip ?? ""}");
             if(!ConfigurationService.Instance.Configuration.InputManager.DisableScrollWheelOnInputs)
             {
                 float mouseWheel = ImGui.GetIO().MouseWheel / 10;
@@ -145,15 +153,18 @@ public static partial class ImBrio
         active |= ImGui.IsItemActive();
 
         ImGui.SameLine();
+
+        PillDummyBox(ref dl, pillWidth, pillHeight, UIConstants.GizmoGreen);
+
+        ImGui.SameLine();
         ImGui.SetNextItemWidth(entryWidth);
 
         using(ImRaii.PushStyle(ImGuiStyleVar.FrameBorderSize, 1f))
-        using(ImRaii.PushColor(ImGuiCol.Border, UIConstants.GizmoGreen))
             changed |= ImGui.DragFloat($"##{label}_Y", ref value.Y, step / 10);
-        
+
         if(ImGui.IsItemHovered())
         {
-            ImGui.SetTooltip($" Y {toolTip ?? ""}");
+            AttachToolTip($" Y {toolTip ?? ""}");
             if(!ConfigurationService.Instance.Configuration.InputManager.DisableScrollWheelOnInputs)
             {
                 float mouseWheel = ImGui.GetIO().MouseWheel / 10;
@@ -167,15 +178,18 @@ public static partial class ImBrio
         active |= ImGui.IsItemActive();
 
         ImGui.SameLine();
+        
+        PillDummyBox(ref dl, pillWidth, pillHeight, UIConstants.GizmoBlue);
+
+        ImGui.SameLine();
         ImGui.SetNextItemWidth(entryWidth);
 
         using(ImRaii.PushStyle(ImGuiStyleVar.FrameBorderSize, 1f))
-        using(ImRaii.PushColor(ImGuiCol.Border, UIConstants.GizmoBlue)) 
             changed |= ImGui.DragFloat($"##{label}_Z", ref value.Z, step / 10);
-      
+
         if(ImGui.IsItemHovered())
         {
-            ImGui.SetTooltip($" Z {toolTip ?? ""}");
+            AttachToolTip($" Z {toolTip ?? ""}");
             if(!ConfigurationService.Instance.Configuration.InputManager.DisableScrollWheelOnInputs)
             {
                 float mouseWheel = ImGui.GetIO().MouseWheel / 10;
