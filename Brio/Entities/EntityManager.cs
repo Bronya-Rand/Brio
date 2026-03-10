@@ -1,5 +1,7 @@
 ﻿using Brio.Capabilities.Core;
+using Brio.Capabilities.Posing;
 using Brio.Config;
+using Brio.Core;
 using Brio.Entities.Actor;
 using Brio.Entities.Camera;
 using Brio.Entities.Core;
@@ -201,6 +203,31 @@ public unsafe partial class EntityManager(IServiceProvider serviceProvider, Conf
     public bool SelectedHasCapability<T>(bool considerChildren = false, bool considerParents = true) where T : Capability
     {
         return TryGetCapabilitiesFromSelectedEntities<T>(out _, considerChildren, considerParents);
+    }
+
+    public List<(ActorEntity actor, PosingCapability capability, Transform transform)> GetAllSelectedActors()
+    {
+        var result = new List<(ActorEntity, PosingCapability, Transform)>();
+        foreach(var id in _selectedEntities)
+        {
+            if(!TryGetEntity(id, out var entity))
+                continue;
+
+            if(!entity.IsAttached)
+                continue;
+
+            if(entity.TryGetCapabilities<PosingCapability>(out var capabilities, true, true))
+            {
+                foreach(var cap in capabilities)
+                {
+                    if(cap is PosingCapability posingCap && posingCap.Actor != null)
+                    {
+                        result.Add((posingCap.Actor, posingCap, posingCap.ModelPosing.Transform));
+                    }
+                }
+            }
+        }
+        return result;
     }
 
     public IEnumerable<ActorEntity> TryGetAllActors()
