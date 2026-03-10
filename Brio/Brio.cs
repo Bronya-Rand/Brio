@@ -59,45 +59,50 @@ public class Brio : IDalamudPlugin
 
         dalamudServices.Framework.RunOnTick(() =>
         {
-            var stopwatch = new Stopwatch();
-            stopwatch.Start();
-            Log.Info($"Starting {Name}...");
-
-            try
+            var trace = new DiagnosticTrace();
+            using(Diagnostics.MeasureTime(ref trace, logOnDispose: true, logLabel: "StartUp"))
             {
-                // Setup plugin services
-                var serviceCollection = SetupServices(dalamudServices);
+                var stopwatch = new Stopwatch();
+                stopwatch.Start();
+                Log.Info($"Starting {Name}...");
 
-                _services = serviceCollection.BuildServiceProvider(new ServiceProviderOptions { ValidateOnBuild = true });
-
-                // Initialize the singletons
-                foreach(var service in serviceCollection)
+                try
                 {
-                    if(service.Lifetime == ServiceLifetime.Singleton)
+                    // Setup plugin services
+                    var serviceCollection = SetupServices(dalamudServices);
+
+                    _services = serviceCollection.BuildServiceProvider(new ServiceProviderOptions { ValidateOnBuild = true });
+
+                    // Initialize the singletons
+                    foreach(var service in serviceCollection)
                     {
-                        Log.Debug($"Initializing {service.ServiceType}...");
-                        _services.GetRequiredService(service.ServiceType);
+                        if(service.Lifetime == ServiceLifetime.Singleton)
+                        {
+                            Log.Debug($"Initializing {service.ServiceType}...");
+                            _services.GetRequiredService(service.ServiceType);
+                        }
                     }
+
+                    // Setup default entities
+                    Log.Debug($"Setting up default entitites...");
+                    _services.GetRequiredService<EntityManager>().SetupDefaultEntities();
+                    _services.GetRequiredService<EntityActorManager>().AttachContainer();
+                    _services.GetRequiredService<Mediator>().StartAsync(CancellationToken.None);
+
+                    // Trigger GPose events to ensure the plugin is in the correct state
+                    Log.Debug($"Triggering initial GPose state...");
+                    _services.GetRequiredService<GPoseService>().TriggerGPoseChange();
+
+                    Log.Info($"Started {Name} in {stopwatch.ElapsedMilliseconds}ms");
                 }
-
-                // Setup default entities
-                Log.Debug($"Setting up default entitites...");
-                _services.GetRequiredService<EntityManager>().SetupDefaultEntities();
-                _services.GetRequiredService<EntityActorManager>().AttachContainer();
-                _services.GetRequiredService<Mediator>().StartAsync(CancellationToken.None);
-
-                // Trigger GPose events to ensure the plugin is in the correct state
-                Log.Debug($"Triggering initial GPose state...");
-                _services.GetRequiredService<GPoseService>().TriggerGPoseChange();
-
-                Log.Info($"Started {Name} in {stopwatch.ElapsedMilliseconds}ms");
+                catch(Exception e)
+                {
+                    Log.Error(e, $"Failed to start {Name} in {stopwatch.ElapsedMilliseconds}ms");
+                    _services?.Dispose();
+                    throw;
+                }
             }
-            catch(Exception e)
-            {
-                Log.Error(e, $"Failed to start {Name} in {stopwatch.ElapsedMilliseconds}ms");
-                _services?.Dispose();
-                throw;
-            }
+
         }, delayTicks: 2); // TODO: Why do we need to wait several frames for some users?
     }
 
