@@ -93,7 +93,7 @@ public static class SpawnMenuEditor
 
                 if(ImBrio.DrawIconButton(FontAwesomeIcon.Circle, "Spawn Point Light", buttonSize))
                 {
-                    lightingService.SpawnLight(LightType.AreaLight);
+                    lightingService.SpawnLight(LightType.PointLight);
                     ImGui.CloseCurrentPopup();
                 }
 

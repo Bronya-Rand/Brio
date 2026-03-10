@@ -35,7 +35,7 @@ public class LightContainerWidget(LightContainerCapability capability) : Widget<
                 }
                 if(ImGui.MenuItem("Area Light###containerwidgetpopup_spawn_SpotLight"))
                 {
-                    Capability.LightingService.SpawnLight(LightType.AreaLight);
+                    Capability.LightingService.SpawnLight(LightType.PointLight);
                 }
                 if(ImGui.MenuItem("Flat Light###containerwidgetpopup_spawn_SpotLight"))
                 {

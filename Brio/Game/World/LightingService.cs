@@ -698,7 +698,7 @@ public enum LightFlags
 public enum LightType : uint
 {
     WorldLight = 1,
-    AreaLight = 2,
+    PointLight = 2,
     SpotLight = 3,
     FlatLight = 4
 }

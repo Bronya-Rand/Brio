@@ -29,7 +29,7 @@ public class LightEditor
 
                 if(ImGui.Button("Spawn Point Light"u8, new(125 * ImGuiHelpers.GlobalScale, 0)))
                 {
-                    lightingService.SpawnLight(LightType.AreaLight);
+                    lightingService.SpawnLight(LightType.PointLight);
                 }
 
                 if(ImGui.Button("Spawn Flat Light"u8, new(125 * ImGuiHelpers.GlobalScale, 0)))
@@ -129,7 +129,7 @@ public class LightEditor
                 case LightType.SpotLight:
                     Capability.SelectedLightType = 0;
                     break;
-                case LightType.AreaLight:
+                case LightType.PointLight:
                     Capability.SelectedLightType = 1;
                     break;
                 case LightType.FlatLight:
@@ -149,7 +149,7 @@ public class LightEditor
                     light->EmissionType = LightType.SpotLight;
                     break;
                 case 1:
-                    light->EmissionType = LightType.AreaLight;
+                    light->EmissionType = LightType.PointLight;
                     break;
                 case 2:
                     light->EmissionType = LightType.FlatLight;
