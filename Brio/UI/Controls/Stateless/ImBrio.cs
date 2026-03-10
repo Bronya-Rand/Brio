@@ -414,6 +414,16 @@ public static partial class ImBrio
             }
         }
     }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining | MethodImplOptions.AggressiveOptimization)]
+    public static void PillDummyBox(ref ImDrawListPtr dl, float width, float height, uint color)
+    {
+        var pillPosZ = ImGui.GetCursorScreenPos();
+        dl.AddRectFilled(pillPosZ, pillPosZ + new Vector2(width * ImGuiHelpers.GlobalScale, height * ImGuiHelpers.GlobalScale), color);
+        ImGui.Dummy(new Vector2(width * ImGuiHelpers.GlobalScale, height * ImGuiHelpers.GlobalScale));
+
+    }
+
     [MethodImpl(MethodImplOptions.AggressiveInlining | MethodImplOptions.AggressiveOptimization)]
     public static void VerticalPadding(float leng)
     {
