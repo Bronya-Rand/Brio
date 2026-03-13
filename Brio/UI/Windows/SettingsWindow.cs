@@ -356,7 +356,7 @@ public class SettingsWindow : Window
                 }
 
                 var maxSaves = _configurationService.Configuration.AutoSave.MaxAutoSaves;
-                if(ImGui.SliderInt("Max Auto-Saves", ref maxSaves, 3, 30))
+                if(ImGui.SliderInt("Max Auto-Saves", ref maxSaves, 3, 80))
                 {
                     _configurationService.Configuration.AutoSave.MaxAutoSaves = maxSaves;
                     _configurationService.ApplyChange();
