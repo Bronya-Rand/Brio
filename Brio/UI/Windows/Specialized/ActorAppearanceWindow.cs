@@ -28,7 +28,7 @@ public class ActorAppearanceWindow : Window, IDisposable
     private readonly EntityManager _entityManager;
     private readonly GPoseService _gPoseService;
     private ActorAppearanceCapability _capability = null!;
-    private AppearanceImportOptions _importOptions = AppearanceImportOptions.Default;
+    private AppearanceImportOptions _importOptions = AppearanceImportOptions.All;
 
     public ActorAppearanceWindow(EntityManager entityManager, GPoseService gPoseService, MCDFService mCDFService) : base($"{Brio.Name} - APPEARANCE###brio_character_editor_window")
     {

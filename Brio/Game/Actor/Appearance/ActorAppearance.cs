@@ -282,6 +282,7 @@ public struct ActorAppearance()
         }
 
         // TODO: Can NPCs have facewear?
+        // yes? but I don't know where they are in the sheet, Probably one of the unknowns. I will look later
         actorAppearance.Facewear = 0;
 
         return actorAppearance;

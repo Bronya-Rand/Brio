@@ -338,6 +338,7 @@ public class ActorAppearanceCapability : ActorCharacterCapability
         appearance.Equipment = new ActorEquipment();
         appearance.Weapons.MainHand = SpecialAppearances.EmperorsMainHand;
         appearance.Weapons.OffHand = SpecialAppearances.EmperorsOffHand;
+        appearance.Facewear = 0;
         return SetAppearance(appearance, AppearanceImportOptions.Gear);
     }
 
@@ -347,6 +348,7 @@ public class ActorAppearanceCapability : ActorCharacterCapability
         appearance.Equipment = ActorEquipment.Smallclothes();
         appearance.Weapons.MainHand = SpecialAppearances.EmperorsMainHand;
         appearance.Weapons.OffHand = SpecialAppearances.EmperorsOffHand;
+        appearance.Facewear = 0;
         return SetAppearance(appearance, AppearanceImportOptions.Gear);
     }
 
@@ -354,6 +356,7 @@ public class ActorAppearanceCapability : ActorCharacterCapability
     {
         var appearance = _actorAppearanceService.GetActorAppearance(Character);
         appearance.Equipment = ActorEquipment.Invisible();
+        appearance.Facewear = 0;
         return SetAppearance(appearance, AppearanceImportOptions.Gear);
     }
 
@@ -393,6 +396,7 @@ public class ActorAppearanceCapability : ActorCharacterCapability
         appearance.Equipment = ActorEquipment.Emperors();
         appearance.Weapons.MainHand = SpecialAppearances.EmperorsMainHand;
         appearance.Weapons.OffHand = SpecialAppearances.EmperorsOffHand;
+        appearance.Facewear = 0;
         return SetAppearance(appearance, AppearanceImportOptions.Gear);
     }
 

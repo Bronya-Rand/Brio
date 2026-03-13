@@ -200,19 +200,10 @@ public class ActorAppearanceService : IDisposable
                         }
                     }
                 }
-
+              
                 // Facewear
-                if(existingAppearance.Facewear != appearance.Facewear)
-                {
-                    if(needsRedraw)
-                    {
-                        appearance.Facewear = native->DrawData.GlassesIds[0];
-                    }
-                    else
-                    {
-                        _setFacewear(&native->DrawData, 0, appearance.Facewear);
-                    }
-                }
+                _setFacewear(&native->DrawData, 0, 0);
+                _setFacewear(&native->DrawData, 0, appearance.Facewear);
             }
 
             if(options.HasFlag(AppearanceImportOptions.Weapon))
@@ -243,7 +234,6 @@ public class ActorAppearanceService : IDisposable
             }
         }
 
-
         if(glamourerUnlocked)
         {
             _glamourerService.UnlockAndRevertCharacter(character);
@@ -261,7 +251,6 @@ public class ActorAppearanceService : IDisposable
 
         unsafe
         {
-
             var native = character.Native();
 
             existingAppearance = GetActorAppearance(character);
@@ -281,7 +270,6 @@ public class ActorAppearanceService : IDisposable
                     native->DrawData.SetVisor(appearance.Runtime.IsVisorToggled);
                     native->DrawData.IsVisorToggled = appearance.Runtime.IsVisorToggled;
                 }
-
                 // Viera Ears
                 if(existingAppearance.Runtime.IsVieraEarsHidden != appearance.Runtime.IsVieraEarsHidden || forceHeadToggles)
                 {
@@ -332,7 +320,8 @@ public class ActorAppearanceService : IDisposable
         return redrawResult;
     }
 
-    public ActorAppearance GetActorAppearance(ICharacter character) => ActorAppearance.FromCharacter(character);
+    public ActorAppearance GetActorAppearance(ICharacter character)
+        => ActorAppearance.FromCharacter(character);
 
     private byte EnforceKindRestrictionsDetour(nint a1, nint a2)
     {

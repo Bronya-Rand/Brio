@@ -186,7 +186,7 @@ public class SceneService(EntityManager _entityManager, VirtualCameraManager _vi
             }
             else // chars with invalid extended appearances
             {
-                await appearanceCapability.SetAppearance(actorFile.AnamnesisCharaFile, AppearanceImportOptions.Default);
+                await appearanceCapability.SetAppearance(actorFile.AnamnesisCharaFile, AppearanceImportOptions.All);
             }
 
             await _framework.RunOnTick(async () =>

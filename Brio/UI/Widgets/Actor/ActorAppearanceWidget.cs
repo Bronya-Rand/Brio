@@ -185,7 +185,7 @@ public class ActorAppearanceWidget(ActorAppearanceCapability capability) : Widge
         ImGui.SameLine();
 
         if(ImBrio.FontIconButton("import_charafile", FontAwesomeIcon.FileDownload, "Import Character"))
-            FileUIHelpers.ShowImportCharacterModal(Capability, AppearanceImportOptions.Default);
+            FileUIHelpers.ShowImportCharacterModal(Capability, AppearanceImportOptions.All);
 
         ImGui.SameLine();
 

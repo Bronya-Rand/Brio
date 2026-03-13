@@ -160,7 +160,7 @@ public class AnamnesisCharaFile : JsonDocumentBase
         appearance.Equipment.RFinger = chara.RightRing;
 
         // Facewear
-        appearance.Facewear = (byte)(chara.Glasses is not null ? chara.Glasses.Value.GlassesId : 0);
+        appearance.Facewear = (ushort)(chara.Glasses is not null ? chara.Glasses.Value.GlassesId : 0);
 
         // Extended Appearance
         appearance.ExtendedAppearance.Transparency = chara.Transparency;
@@ -170,7 +170,7 @@ public class AnamnesisCharaFile : JsonDocumentBase
     }
 
     public static implicit operator BrioHuman.ShaderParams(AnamnesisCharaFile chara)
-    {
+    {       
         // More Extended Appearance (Shaders)
         var shaders = new BrioHuman.ShaderParams
         {
@@ -299,7 +299,7 @@ public class AnamnesisCharaFile : JsonDocumentBase
     {
         public ushort GlassesId { get; set; }
 
-        public static implicit operator ushort(GlassesSave save) => (ushort)save.GlassesId;
+        public static implicit operator ushort(GlassesSave save) => save.GlassesId;
 
         public static implicit operator GlassesSave(ushort save) => new()
         {
