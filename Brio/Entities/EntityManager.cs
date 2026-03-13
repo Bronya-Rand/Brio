@@ -205,9 +205,9 @@ public unsafe partial class EntityManager(IServiceProvider serviceProvider, Conf
         return TryGetCapabilitiesFromSelectedEntities<T>(out _, considerChildren, considerParents);
     }
 
-    public List<(ActorEntity actor, PosingCapability capability, Transform transform)> GetAllSelectedActors()
+    public List<(EntityId actor, PosingCapability capability, Transform transform)> GetAllSelectedActors()
     {
-        var result = new List<(ActorEntity, PosingCapability, Transform)>();
+        var result = new List<(EntityId, PosingCapability, Transform)>();
         foreach(var id in _selectedEntities)
         {
             if(!TryGetEntity(id, out var entity))

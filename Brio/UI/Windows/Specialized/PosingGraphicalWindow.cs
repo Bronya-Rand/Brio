@@ -47,7 +47,7 @@ public class PosingGraphicalWindow : Window, IDisposable
     private float _closestHover = float.MaxValue;
 
     private Matrix4x4? _trackingMatrix;
-    private List<(EntityId id, PoseInfo info, Transform model)>? _groupedSnapshotPending = null;
+    private List<(EntityId id, PosingCapability poseCap, Transform transform)>? _groupedSnapshotPending = null;
 
     int _selectedPane = 0;
     private bool _hideControlPane = false;
@@ -453,21 +453,9 @@ public class PosingGraphicalWindow : Window, IDisposable
                 },
                 _ =>
                 {
-                    // On first application while starting a gizmo drag, capture before-states for grouped undo
                     if(_groupedSnapshotPending == null && ImBrioGizmo.IsUsing())
                     {
-                        var list = new List<(EntityId, PoseInfo, Transform)>();
-                        foreach(var id in _entityManager.SelectedEntityIds)
-                        {
-                            if(!_entityManager.TryGetEntity(id, out var ent))
-                                continue;
-
-                            if(!ent.TryGetCapability<PosingCapability>(out var cap))
-                                continue;
-
-                            list.Add((id, cap.SkeletonPosing.PoseInfo.Clone(), cap.ModelPosing.Transform));
-                        }
-                        _groupedSnapshotPending = list;
+                        _groupedSnapshotPending = _entityManager.GetAllSelectedActors();
                     }
 
                     // apply delta to all selected entities
@@ -487,21 +475,9 @@ public class PosingGraphicalWindow : Window, IDisposable
                 },
                 _ =>
                 {
-                    // On first application while starting a gizmo drag, capture before-states for grouped undo
                     if(_groupedSnapshotPending == null && ImBrioGizmo.IsUsing())
                     {
-                        var list = new List<(EntityId, PoseInfo, Transform)>();
-                        foreach(var id in _entityManager.SelectedEntityIds)
-                        {
-                            if(!_entityManager.TryGetEntity(id, out var ent))
-                                continue;
-
-                            if(!ent.TryGetCapability<PosingCapability>(out var cap))
-                                continue;
-
-                            list.Add((id, cap.SkeletonPosing.PoseInfo.Clone(), cap.ModelPosing.Transform));
-                        }
-                        _groupedSnapshotPending = list;
+                        _groupedSnapshotPending = _entityManager.GetAllSelectedActors();
                     }
 
                     // apply delta to all selected entities

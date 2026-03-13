@@ -22,7 +22,7 @@ public class PosingTransformEditor
 {
     private Transform? _trackingTransform;
     private Vector3? _trackingEuler;
-    private List<(EntityId id, PoseInfo info, Transform model)>? _groupedPendingSnapshot = null;
+    private List<(EntityId id, PosingCapability capability, Transform transform)>? _groupedPendingSnapshot = null;
 
     public void Draw(string id, PosingCapability posingCapability, bool compactMode = false)
     {
@@ -360,23 +360,11 @@ public class PosingTransformEditor
 
             if(didChange)
             {
-                if(_groupedPendingSnapshot == null && Brio.TryGetService<HistoryService>(out HistoryService? historyService))
+                if(_groupedPendingSnapshot == null && 
+                    Brio.TryGetService<HistoryService>(out HistoryService? historyService) && 
+                    Brio.TryGetService<EntityManager>(out EntityManager? entityManager))
                 {
-                    var list = new List<(EntityId, PoseInfo, Transform)>();
-                    if(Brio.TryGetService<EntityManager>(out EntityManager? entityManager))
-                    {
-                        foreach(var id in entityManager.SelectedEntityIds)
-                        {
-                            if(!entityManager.TryGetEntity(id, out var ent))
-                                continue;
-
-                            if(!ent.TryGetCapability<PosingCapability>(out var cap))
-                                continue;
-
-                            list.Add((id, cap.SkeletonPosing.PoseInfo.Clone(), cap.ModelPosing.Transform));
-                        }
-                    }
-                    _groupedPendingSnapshot = list;
+                    _groupedPendingSnapshot = entityManager.GetAllSelectedActors();
                 }
 
                 var delta = primaryTransform.CalculateDiff(beforeMods);

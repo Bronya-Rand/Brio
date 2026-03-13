@@ -15,11 +15,11 @@ public class HistoryService(EntityManager entityManager)
     private readonly Stack<GroupEntry> _undo = [];
     private readonly Stack<GroupEntry> _redo = [];
 
-    public void Snapshot(IEnumerable<(EntityId id, PoseInfo info, Transform model)> entries)
+    public void Snapshot(IEnumerable<(EntityId id, PosingCapability capability, Transform transform)> entries)
     {
         var group = new GroupEntry
         {
-            Entries = [.. entries.Select(e => new HistoryEntry(e.id, e.info.Clone(), e.model))]
+            Entries = [.. entries.Select(e => new HistoryEntry(e.id, e.capability, e.transform))]
         };
 
         _undo.Push(group);
@@ -35,25 +35,17 @@ public class HistoryService(EntityManager entityManager)
             return;
 
         var pop = _undo.Pop();
-        var inverse = new GroupEntry { Entries = new List<HistoryEntry>() };
+        var entries = new GroupEntry();
 
-        foreach(var e in pop.Entries)
+        foreach(var entry in pop.Entries)
         {
-            if(!_entityManager.TryGetEntity(e.Id, out var entity))
-                continue;
+            entries.Entries.Add(new HistoryEntry(entry.Id, entry.Capability, entry.ModelTransform));
 
-            if(!entity.TryGetCapability<PosingCapability>(out var cap))
-                continue;
-
-            // save current as inverse
-            inverse.Entries.Add(new HistoryEntry(e.Id, cap.SkeletonPosing.PoseInfo.Clone(), cap.ModelPosing.Transform));
-
-            // apply stored
-            cap.SkeletonPosing.PoseInfo = e.Info.Clone();
-            cap.ModelPosing.Transform = e.ModelTransform;
+            entry.Capability.SkeletonPosing.PoseInfo = entry.Capability.SkeletonPosing.PoseInfo.Clone();
+            entry.Capability.ModelPosing.Transform = entry.ModelTransform;
         }
 
-        _redo.Push(inverse);
+        _redo.Push(entries);
     }
 
     public void Redo()
@@ -62,23 +54,17 @@ public class HistoryService(EntityManager entityManager)
             return;
 
         var pop = _redo.Pop();
-        var inverse = new GroupEntry { Entries = new List<HistoryEntry>() };
+        var entries = new GroupEntry();
 
-        foreach(var e in pop.Entries)
+        foreach(var entry in pop.Entries)
         {
-            if(!_entityManager.TryGetEntity(e.Id, out var entity))
-                continue;
+            entries.Entries.Add(new HistoryEntry(entry.Id, entry.Capability, entry.ModelTransform));
 
-            if(!entity.TryGetCapability<PosingCapability>(out var cap))
-                continue;
-
-            inverse.Entries.Add(new HistoryEntry(e.Id, cap.SkeletonPosing.PoseInfo.Clone(), cap.ModelPosing.Transform));
-
-            cap.SkeletonPosing.PoseInfo = e.Info.Clone();
-            cap.ModelPosing.Transform = e.ModelTransform;
+            entry.Capability.SkeletonPosing.PoseInfo = entry.Capability.SkeletonPosing.PoseInfo.Clone();
+            entry.Capability.ModelPosing.Transform = entry.ModelTransform;
         }
 
-        _undo.Push(inverse);
+        _undo.Push(entries);
     }
 
     public void Clear()
@@ -91,6 +77,6 @@ public class HistoryService(EntityManager entityManager)
     {
         public List<HistoryEntry> Entries = [];
     }
-
-    private record class HistoryEntry(EntityId Id, PoseInfo Info, Transform ModelTransform);
 }
+
+public record class HistoryEntry(EntityId Id, PosingCapability Capability, Transform ModelTransform);

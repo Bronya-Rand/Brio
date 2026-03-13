@@ -28,7 +28,7 @@ public class PosingTransformWindow : Window
     private readonly PosingTransformEditor _posingTransformEditor = new();
 
     private Matrix4x4? _trackingMatrix;
-    private List<(EntityId id, PoseInfo info, Transform model)>? _groupedPendingSnapshot = null;
+    private List<(EntityId id, PosingCapability capability, Transform transform)>? _groupedPendingSnapshot = null;
 
     public PosingTransformWindow(EntityManager entityManager, CameraService cameraService, PosingService posingService, HistoryService historyService) : base($"{Brio.Name} - TRANSFORM###brio_transform_window", ImGuiWindowFlags.AlwaysVerticalScrollbar)
     {
@@ -132,17 +132,7 @@ public class PosingTransformWindow : Window
         var selected = posing.Selected;
 
         // Check for multi-actor selection
-        var selectedActors = new List<(ActorEntity actor, PosingCapability capability, Transform transform)>();
-
-        foreach(var entityId in _entityManager.SelectedEntityIds)
-        {
-            if(_entityManager.TryGetEntity(entityId, out var entity) &&
-               entity is ActorEntity actorEntity &&
-               actorEntity.TryGetCapability<PosingCapability>(out var cap))
-            {
-                selectedActors.Add((actorEntity, cap, cap.ModelPosing.Transform));
-            }
-        }
+        var selectedActors = _entityManager.GetAllSelectedActors();
 
         bool isMultiActorSelection = selectedActors.Count > 1;
         Vector3? multiActorCentroid = null;
@@ -226,18 +216,7 @@ public class PosingTransformWindow : Window
             {
                 if(_groupedPendingSnapshot == null && _trackingMatrix == null)
                 {
-                    var list = new List<(EntityId, PoseInfo, Transform)>();
-                    foreach(var id in _entityManager.SelectedEntityIds)
-                    {
-                        if(!_entityManager.TryGetEntity(id, out var ent))
-                            continue;
-
-                        if(!ent.TryGetCapability<PosingCapability>(out var cap))
-                            continue;
-
-                        list.Add((id, cap.SkeletonPosing.PoseInfo.Clone(), cap.ModelPosing.Transform));
-                    }
-                    _groupedPendingSnapshot = list;
+                    _groupedPendingSnapshot = _entityManager.GetAllSelectedActors();
                 }
 
                 _trackingMatrix = matrix;
