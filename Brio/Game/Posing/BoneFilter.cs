@@ -92,24 +92,22 @@ public class BoneFilter
 
     public bool IsBoneValid(Bone bone, PoseInfoSlot slot, bool considerHidden = false)
     {
+        if(bone.IsHidden && !considerHidden)
+            return false;
+
         var cacheKey = (bone.Name, slot, considerHidden);
 
         if(_cache.TryGetValue(cacheKey, out bool cachedResult))
-        {
             return cachedResult;
-        }
 
-        bool result = IsBoneValidUncached(bone, slot, considerHidden);
+        bool result = IsBoneValidUncached(bone, slot);
 
         _cache[cacheKey] = result;
         return result;
     }
 
-    private bool IsBoneValidUncached(Bone bone, PoseInfoSlot slot, bool considerHidden)
+    private bool IsBoneValidUncached(Bone bone, PoseInfoSlot slot)
     {
-        if(bone.IsHidden && !considerHidden)
-            return false;
-
         // Look for excludes 
         foreach(var excluded in _excludedPrefixes)
         {
