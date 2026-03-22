@@ -18,6 +18,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
+using static FFXIVClientStructs.FFXIV.Client.UI.RaptureAtkHistory.Delegates;
 
 namespace Brio.Capabilities.Posing;
 
@@ -289,37 +290,45 @@ public class PosingCapability : ActorCharacterCapability
         _undoStack.Push(new PoseStack(SkeletonPosing.PoseInfo.Clone(), ModelPosing.Transform));
         _undoStack = _undoStack.Trim(undoStackSize + 1);
 
-
-        // Holy hell, This took me so long to fix and it stil breaks IK
-        var bone = SkeletonPosing.GetBone("j_kao", PoseInfoSlot.Character);
-        if(bone != null)
-        {
-            var face = SkeletonPosing.PoseInfo.GetPoseInfo(bone);
-
-            // Check if j_kao or any of its parent bones are overridden
-            bool hasOverriddenParent = false;
-            var currentBone = bone.Parent;
-            while(currentBone != null)
-            {
-                var parentPoseInfo = SkeletonPosing.PoseInfo.GetPoseInfo(currentBone);
-                if(parentPoseInfo.HasStacks)
-                {
-                    hasOverriddenParent = true;
-                    break;
-                }
-                currentBone = currentBone.Parent;
-            }
-
-            if(face.HasStacks || hasOverriddenParent)
-            {
-                // Reconcile ONLY j_kao and its descendants to fix gizmo without affecting limbs
-                ReconcileChildren(bone);
-                return;
-            }
-        }
+        if(SkeletonPosing.PoseInfo.HasIKStacks is false)
+            ReconcileHead();
 
         if(reconcile)
             Reconcile(reset);
+    }
+
+    public void ReconcileHead()
+    {
+        _framework.RunOnTick(() =>
+        {
+            // Holy hell, This took me so long to fix and it stil breaks IK
+            var bone = SkeletonPosing.GetBone("j_kao", PoseInfoSlot.Character);
+            if(bone != null)
+            {
+                var face = SkeletonPosing.PoseInfo.GetPoseInfo(bone);
+
+                // Check if j_kao or any of its parent bones are overridden
+                bool hasOverriddenParent = false;
+                var currentBone = bone.Parent;
+                while(currentBone != null)
+                {
+                    var parentPoseInfo = SkeletonPosing.PoseInfo.GetPoseInfo(currentBone);
+                    if(parentPoseInfo.HasStacks)
+                    {
+                        hasOverriddenParent = true;
+                        break;
+                    }
+                    currentBone = currentBone.Parent;
+                }
+
+                if(face.HasStacks || hasOverriddenParent)
+                {
+                    // Reconcile ONLY j_kao and its descendants to fix gizmo without affecting limbs
+                    ReconcileChildren(bone);
+                    return;
+                }
+            }
+        });
     }
 
     public void Redo()
